@@ -1,0 +1,235 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+Import Dataset and create working dataset:
+```{r}
+#install.packages("plotly")
+library(plotly)
+library(reshape2)
+library(tidyverse)
+games <- read.csv("../../data/vgsales.csv")
+game_melt <- melt(data=games,id.vars = c("Rank","Name","Platform","Year","Genre","Publisher"),measure.vars=c("NA_Sales","EU_Sales","JP_Sales","Other_Sales","Global_Sales"))
+game_melt$Year <- as.integer(game_melt$Year)
+colnames(game_melt)[7] <- "Region"
+colnames(game_melt)[8] <- "Copies Sold"
+head(game_melt)
+```
+Graph time baby!
+```{r}
+#Number of Copies Sold
+graph1 <- game_melt %>% 
+    filter(Region == "NA_Sales") %>%
+    group_by(Region,Year,Genre) %>%
+    summarise("Copies Sold" = sum(`Copies Sold`)) %>% 
+    ggplot() +
+    aes(x=Year,
+        y=`Copies Sold`,
+        color = Genre) + 
+    geom_line()+
+    theme_bw()+
+    theme(axis.text.x = element_text(angle = 90, hjust=0.95, vjust=0.2)) +
+    ylab("Number of Copies Sold (in millions)")
+    
+ggplotly(graph1)
+```
+
+```{r}
+#Number Releases
+graph2 <- game_melt %>% 
+    filter(Region == "NA_Sales") %>%
+    group_by(Region,Year,Genre) %>%
+    count(Genre) %>%
+    rename(`Number of Releases`="n")%>% 
+    ggplot() +
+    aes(x=Year,
+        y=`Number of Releases`,
+        fill = Genre) + 
+    geom_bar(stat="identity")+
+    theme_bw()+
+    theme(panel.grid.major.x = element_blank())+
+    theme(axis.text.x = element_text(angle = 90, hjust=0.95, vjust=0.2))+
+    ylab("Number of Games Released")
+ggplotly(graph2)
+```
+```{r}
+#Number of Platforms, Genres and Publishers with games > 100 copies sold 
+graph3 <- game_melt %>% 
+    filter(Region == "JP_Sales") %>%
+    group_by(Year)%>%
+    melt(id.vars=c("Year"),measure.vars=c("Genre","Platform","Publisher")) %>%
+    rename(Category='variable') %>% 
+    group_by(Year,Category) %>%
+    unique() %>%
+    count(Year,Category) %>%
+    rename(`Counts of Genres, Publishers and Platforms`= n) %>% 
+    ggplot() +
+    aes(x=Year,
+        y=`Counts of Genres, Publishers and Platforms`,
+        fill = Category) + 
+    geom_bar(stat="identity")+
+    theme(axis.text.x = element_text(angle = 90, hjust=0.95, vjust=0.2))+
+    ylab("Counts of Genres, Publishers and Platforms")
+ggplotly(graph3)
+x<-1
+y<-list(x)
+is.list(y)
+```
+
+```{r}
+testfxc1 <-function(reg,plat,gen,pub,years) {
+         # Input: List of Regions, Platforms, Genres, Publishers, Min and Max Year
+         # Output: Graph
+         #
+         # Create subset based on filters 
+         # Pass to graph
+         # Output graph
+        if ("Global_Sales" %in% reg){
+            filter_region = list("Global_Sales")
+        } else {
+            filter_region = reg
+        }
+         if ("all" %in% plat){
+             filter_plat = unique(game_melt$Platform)
+         } else {
+             filter_plat = plat
+         }
+         if ("all" %in% gen){
+             filter_gen = unique(game_melt$Genre)
+         } else {
+             filter_gen = gen
+         }
+         if ("all" %in% pub){
+             filter_pub = unique(game_melt$Publisher)
+         } else {
+             filter_pub = pub
+         }
+         min_year = years[1]
+         max_year = years[2]
+         
+         graph1 <- game_melt[,3:8] %>% 
+             subset(Region %in% filter_region & Platform %in% filter_plat & Genre %in% filter_gen & Publisher %in% filter_pub & Year >= min_year & Year <= max_year) %>%
+             group_by(Year,Genre) %>%
+             summarise("Copies Sold" = sum(`Copies Sold`)) %>% 
+             ggplot() +
+             aes(x=as.factor(Year),
+                 y=`Copies Sold`,
+                 fill = Genre) + 
+             geom_bar(stat="identity")+
+             theme(axis.text.x = element_text(angle = 90, hjust=0.95, vjust=0.2)) +
+             ylab("Total Game Copies Sold (in millions)")
+         
+         return (ggplotly(graph1))
+}
+
+testfxc2 <-function(reg,plat,gen,pub,years) {
+        # Input: List of Regions, Platforms, Genres, Publishers, Min and Max Year
+        # Output: Graph
+        #
+        # Create subset based on filters 
+        # Pass to graph
+        # Output graph
+        if ("Global_Sales" %in% reg){
+            filter_region = list("Global_Sales")
+        } else {
+            filter_region = reg
+        }
+        if ("all" %in% plat){
+            filter_plat = unique(game_melt$Platform)
+        } else {
+            filter_plat = plat
+        }
+        if ("all" %in% gen){
+            filter_gen = unique(game_melt$Genre)
+        } else {
+            filter_gen = gen
+        }
+        if ("all" %in% pub){
+            filter_pub = unique(game_melt$Publisher)
+        } else {
+            filter_pub = pub
+        }
+        min_year = years[1]
+        max_year = years[2]
+        
+        graph2 <- game_melt[,3:8] %>% 
+            subset(Region %in% filter_region & Platform %in% filter_plat & Genre %in% filter_gen & Publisher %in% filter_pub & Year >= min_year & Year <= max_year) %>%
+            group_by(Year,Genre) %>%
+            count(Year,Genre) %>%
+            rename(`Number of Releases`="n") %>% 
+            ggplot() +
+            aes(x=as.factor(Year),
+                y=`Number of Releases`,
+                fill = Genre) + 
+            geom_bar(stat="identity")+
+            theme_bw()+
+            theme(axis.text.x = element_text(angle = 90, hjust=0.95, vjust=0.2))+
+            ylab("Number of Games Released")
+
+        return (ggplotly(graph2))
+    }
+```
+
+```{r}
+filtered_game_melt %>%
+    group_by(Year,Genre) %>%
+    summarise("Copies Sold" = sum(`Copies Sold`)) %>%
+    ggplot()+
+    aes(x=Year,
+        y=`Copies Sold`,
+        color=Genre)+
+    geom_line()+
+    theme_bw() +
+    theme(legend.title=element_blank()) +
+    theme(panel.grid.major.x = element_blank())
+```
+
+```{r}
+filter_region = list("JP_Sales")
+filter_plat = unique(game_melt$Platform)
+filter_gen = unique(game_melt$Genre)
+filter_pub = unique(game_melt$Publisher)
+min_year = 1980
+max_year = 2017
+
+ filtered_game_melt <- game_melt[,3:8] %>% 
+            subset(Region %in% filter_region & Platform %in% filter_plat & Genre %in% filter_gen & Publisher %in% filter_pub & Year >= min_year & Year <= max_year)
+
+graph1 <-  filtered_game_melt %>%
+    group_by(Year,Genre) %>%
+    summarise("Copies Sold" = sum(`Copies Sold`)) %>% 
+    ggplot() +
+    aes(x=Year,
+        y=`Copies Sold`,
+        color = Genre,
+        group = 1,
+        text = paste("Year: ",Year,
+                     "<br>Copies Sold: ",`Copies Sold`,
+                     "<br>Genre: ", Genre)) + 
+    geom_line()+
+    theme_bw() +
+    theme(legend.title=element_blank()) +
+    theme(panel.grid.major.x = element_blank()) + 
+    theme(axis.text.x = element_text(angle = 90, hjust=0.95, vjust=0.2)) +
+    #scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")) +
+    ylab("Number of Copies Sold (in millions)")+
+    xlab("Year")
+ggplotly(graph1,tooltip="text")
+
+```
+
+```{r}
+filter_region = list("JP_Sales")
+filter_plat = list("XOne")
+filter_gen = unique(game_melt$Genre)
+filter_pub = unique(game_melt$Publisher)
+min_year = 1980
+max_year = 1990
+
+filtered_game_melt <- game_melt[,3:8] %>% 
+    subset(Region %in% filter_region & Platform %in% filter_plat & Genre %in% filter_gen & Publisher %in% filter_pub & Year >= min_year & Year <= max_year)
+filtered_game_melt
+```
+
+
+
